@@ -1,3 +1,6 @@
+ioq3_sql_log
+=============
+
 This is a QVM interaction logger.  It will log the transactions between the
 QVM (cgame, ui, qagame) and the client and server.  It also logs the
 opposite direction.
@@ -10,16 +13,16 @@ Many of the SQL inserts are commented out because they are too verbose.  If you
 are interested, you can comment/uncomment any of them that you like.  The files
 of interest are:
 
-  for cgame QVM:  code/client/cl_cgame.c
-  for ui QVM:     code/client/cl_ui.c
-  for qagame QVM: code/server/sv_game.c
+    for cgame QVM:  code/client/cl_cgame.c
+    for ui QVM:     code/client/cl_ui.c
+    for qagame QVM: code/server/sv_game.c
 
 Be sure to only uncomment what you are interested in.  There are millions of
 calls and if you enable something like memset, you will flood the database
 with meaningless entries and slow down the client/server.
 
-This will insert full snapshots and gamestate into the SQL database.  It will grow
-quite large quickly because of this.
+This will insert full snapshots and gamestate into the SQL database.  It will
+grow quite large quickly because of this.
 
 This also builds a sqlite3 executable which you can run queries on the database
 when finished.  By default, the name is 'qvm_log.db' for both the client and
