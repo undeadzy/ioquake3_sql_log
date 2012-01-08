@@ -287,6 +287,13 @@ static void SV_Startup( void ) {
 	
 	// Join the ipv6 multicast group now that a map is running so clients can scan for us on the local network.
 	NET_JoinMulticast6();
+
+#ifdef USE_SQLITE3
+	Com_Printf( "Starting SQLite3 database\n" );
+	if (sql_init(&sql, "server_qvm_log.db") < 0) {
+		Com_Error(ERR_DROP, "Failed to initialize the database");
+	}
+#endif
 }
 
 
@@ -773,6 +780,12 @@ void SV_Shutdown( char *finalmsg ) {
 	Cvar_Set( "sv_running", "0" );
 	Cvar_Set("ui_singlePlayerActive", "0");
 
+#ifdef USE_SQLITE3
+	Com_Printf( "Stopping SQLite3 database\n" );
+	if (sql_close(&sql) < 0) {
+		Com_Error(ERR_DROP, "Failed to close the database");
+	}
+#endif
 	Com_Printf( "---------------------------\n" );
 
 	// disconnect any local clients

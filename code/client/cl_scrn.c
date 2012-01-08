@@ -475,6 +475,9 @@ void SCR_DrawScreenField( stereoFrame_t stereoFrame ) {
 
 	re.BeginFrame( stereoFrame );
 
+#ifdef USE_SQLITE3
+	sql_insert_null(sql, "client", "ui_QVM", "UI_IS_FULLSCREEN");
+#endif
 	uiFullscreen = (uivm && VM_Call( uivm, UI_IS_FULLSCREEN ));
 
 	// wide aspect ratio screens need to have the sides cleared
@@ -500,6 +503,9 @@ void SCR_DrawScreenField( stereoFrame_t stereoFrame ) {
 		case CA_DISCONNECTED:
 			// force menu up
 			S_StopAllSounds();
+#ifdef USE_SQLITE3
+			sql_insert_text(sql, "client", "ui_QVM", "UI_SET_ACTIVE_MENU", "UIMENU_MAIN");
+#endif
 			VM_Call( uivm, UI_SET_ACTIVE_MENU, UIMENU_MAIN );
 			break;
 		case CA_CONNECTING:
@@ -507,7 +513,13 @@ void SCR_DrawScreenField( stereoFrame_t stereoFrame ) {
 		case CA_CONNECTED:
 			// connecting clients will only show the connection dialog
 			// refresh to update the time
+#ifdef USE_SQLITE3
+			sql_insert_int(sql, "client", "ui_QVM", "UI_REFRESH", cls.realtime);
+#endif
 			VM_Call( uivm, UI_REFRESH, cls.realtime );
+#ifdef USE_SQLITE3
+			sql_insert_int(sql, "client", "ui_QVM", "UI_DRAW_CONNECT_SCREEN", 0);
+#endif
 			VM_Call( uivm, UI_DRAW_CONNECT_SCREEN, qfalse );
 			break;
 		case CA_LOADING:
@@ -518,7 +530,13 @@ void SCR_DrawScreenField( stereoFrame_t stereoFrame ) {
 			// also draw the connection information, so it doesn't
 			// flash away too briefly on local or lan games
 			// refresh to update the time
+#ifdef USE_SQLITE3
+			sql_insert_int(sql, "client", "ui_QVM", "UI_REFRESH", cls.realtime);
+#endif
 			VM_Call( uivm, UI_REFRESH, cls.realtime );
+#ifdef USE_SQLITE3
+			sql_insert_int(sql, "client", "ui_QVM", "UI_DRAW_CONNECT_SCREEN", cls.realtime);
+#endif
 			VM_Call( uivm, UI_DRAW_CONNECT_SCREEN, qtrue );
 			break;
 		case CA_ACTIVE:
@@ -534,6 +552,9 @@ void SCR_DrawScreenField( stereoFrame_t stereoFrame ) {
 
 	// the menu draws next
 	if ( Key_GetCatcher( ) & KEYCATCH_UI && uivm ) {
+#ifdef USE_SQLITE3
+		sql_insert_int(sql, "client", "ui_QVM", "UI_REFRESH", cls.realtime);
+#endif
 		VM_Call( uivm, UI_REFRESH, cls.realtime );
 	}
 

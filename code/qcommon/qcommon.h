@@ -36,6 +36,47 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 //============================================================================
 
+#ifdef USE_SQLITE3
+#include "../sqlite3/sqlite3.h"
+
+typedef struct {
+	sqlite3 *db;
+	sqlite3_stmt *table;
+	sqlite3_stmt *log;
+	sqlite3_stmt *begin;
+	sqlite3_stmt *end;
+
+	size_t numInserts;
+	size_t numInstances;
+} sql_data;
+
+#define SQL_FAIL(sql,x) do {  \
+	fprintf(stderr, "ERROR: %s in %s:%d [build: %s:%s]\n", x, __FILE__, __LINE__, __DATE__, __TIME__); \
+	sql_close(&sql); \
+} while (0);
+#define DEBUG_PRINT(x) do { \
+	fprintf(stderr, "ERROR: %s in %s:%d [build: %s:%s]\n", x, __FILE__, __LINE__, __DATE__, __TIME__); \
+} while (0);
+
+extern sql_data *sql;
+
+int sql_init(sql_data **sql, const char *filename);
+int sql_close(sql_data **sql);
+int sql_insert_var_text(sql_data *sql, const char *caller, const char *target, const char *msgID, const char *msg, ...)  __attribute__ ((format (printf, 5, 6)));
+int sql_insert_null(sql_data *sql, const char *caller, const char *target, const char *msgID);
+int sql_insert_int(sql_data *sql, const char *caller, const char *target, const char *msgID, int value);
+int sql_insert_text(sql_data *sql, const char *caller, const char *target, const char *msgID, const char *value);
+int sql_insert_blob(sql_data *sql, const char *caller, const char *target, const char *msgID, void *value, int size);
+int sql_insert_double(sql_data *sql, const char *caller, const char *target, const char *msgID, double value);
+int sql_insert_double_ptr(sql_data *sql, const char *caller, const char *target, const char *msgID, double *value);
+
+/* These operate on local instances.  You will want to use the non-local versions
+   so it does reference tracking on the global variable.
+*/
+int sql_init_local(sql_data **sql, const char *filename);
+int sql_close_local(sql_data **sql);
+#endif /* USE_SQLITE3 */
+
 //
 // msg.c
 //

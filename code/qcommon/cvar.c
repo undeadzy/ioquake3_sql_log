@@ -1267,6 +1267,7 @@ void	Cvar_Update( vmCvar_t *vmCvar ) {
 		     (unsigned int) strlen(cv->string));
 	Q_strncpyz( vmCvar->string, cv->string,  MAX_CVAR_VALUE_STRING ); 
 
+	fprintf(stderr, "Updating QVM with current value: %s\n", cv->name);
 	vmCvar->value = cv->value;
 	vmCvar->integer = cv->integer;
 }

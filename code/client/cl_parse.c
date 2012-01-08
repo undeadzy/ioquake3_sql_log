@@ -321,6 +321,10 @@ void CL_ParseSnapshot( msg_t *msg ) {
 	}
 
 	cl.newSnapshots = qtrue;
+
+#ifdef USE_SQLITE3
+	sql_insert_blob(sql, "server", "client", "snapshot", &newSnap, sizeof(newSnap));
+#endif
 }
 
 
@@ -552,6 +556,10 @@ void CL_ParseGamestate( msg_t *msg ) {
 
 	// make sure the game starts
 	Cvar_Set( "cl_paused", "0" );
+
+#ifdef USE_SQLITE3
+	sql_insert_blob(sql, "server", "client", "gamestate", &cl.gameState, sizeof(cl.gameState));
+#endif
 }
 
 
@@ -857,6 +865,10 @@ void CL_ParseCommandString( msg_t *msg ) {
 
 	index = seq & (MAX_RELIABLE_COMMANDS-1);
 	Q_strncpyz( clc.serverCommands[ index ], s, sizeof( clc.serverCommands[ index ] ) );
+
+#ifdef USE_SQLITE3
+	sql_insert_text(sql, "server", "client", "commandString", s);
+#endif
 }
 
 

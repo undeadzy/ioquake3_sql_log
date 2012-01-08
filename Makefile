@@ -50,6 +50,9 @@ endif
 ifndef BUILD_MISSIONPACK
   BUILD_MISSIONPACK=
 endif
+ifndef BUILD_SQLITE3
+  BUILD_SQLITE3=0
+endif
 
 ifneq ($(PLATFORM),darwin)
   BUILD_CLIENT_SMP = 0
@@ -225,6 +228,7 @@ Q3UIDIR=$(MOUNT_DIR)/q3_ui
 JPDIR=$(MOUNT_DIR)/jpeg-8c
 SPEEXDIR=$(MOUNT_DIR)/libspeex
 ZDIR=$(MOUNT_DIR)/zlib
+SQLDIR=$(MOUNT_DIR)/sqlite3
 Q3ASMDIR=$(MOUNT_DIR)/tools/asm
 LBURGDIR=$(MOUNT_DIR)/tools/lcc/lburg
 Q3CPPDIR=$(MOUNT_DIR)/tools/lcc/cpp
@@ -885,6 +889,14 @@ ifneq ($(BUILD_GAME_QVM),0)
   endif
 endif
 
+ifneq ($(BUILD_SQLITE3),0)
+  DED_CFLAGS += -DUSE_SQLITE3=1
+  CLIENT_CFLAGS += -DUSE_SQLITE3=1 -DSQLITE_THREADSAFE=0 -DSQLITE_OMIT_LOAD_EXTENSION=1
+  SQL_CFLAGS += -DUSE_SQLITE3=1 -DSQLITE_THREADSAFE=0 -DSQLITE_OMIT_LOAD_EXTENSION=1
+  TARGETS += \
+    $(B)/sqlite3$(FULLBINEXT)
+endif
+
 ifeq ($(USE_OPENAL),1)
   CLIENT_CFLAGS += -DUSE_OPENAL
   ifeq ($(USE_OPENAL_DLOPEN),1)
@@ -982,6 +994,12 @@ $(echo_cmd) "CC $<"
 $(Q)$(CC) $(NOTSHLIBCFLAGS) $(CFLAGS) $(CLIENT_CFLAGS) $(OPTIMIZE) -o $@ -c $<
 endef
 
+# Cannot use -ffast-math with sqlite3
+define DO_SQL_CC
+$(echo_cmd) "SQL_CC $<"
+$(Q)$(CC) $(NOTSHLIBCFLAGS) $(CFLAGS) $(SQL_CFLAGS) -o $@ -c $<
+endef
+
 define DO_REF_CC
 $(echo_cmd) "REF_CC $<"
 $(Q)$(CC) $(SHLIBCFLAGS) $(CFLAGS) $(CLIENT_CFLAGS) $(OPTIMIZE) -o $@ -c $<
@@ -1056,7 +1074,7 @@ endef
 
 define DO_DED_CC
 $(echo_cmd) "DED_CC $<"
-$(Q)$(CC) $(NOTSHLIBCFLAGS) -DDEDICATED $(CFLAGS) $(SERVER_CFLAGS) $(OPTIMIZE) -o $@ -c $<
+$(Q)$(CC) $(NOTSHLIBCFLAGS) -DDEDICATED $(DED_CFLAGS) $(SERVER_CFLAGS) $(OPTIMIZE) -o $@ -c $<
 endef
 
 define DO_WINDRES
@@ -1148,6 +1166,7 @@ makedirs:
 	@if [ ! -d $(BUILD_DIR) ];then $(MKDIR) $(BUILD_DIR);fi
 	@if [ ! -d $(B) ];then $(MKDIR) $(B);fi
 	@if [ ! -d $(B)/client ];then $(MKDIR) $(B)/client;fi
+	@if [ ! -d $(B)/sqlite3 ];then $(MKDIR) $(B)/sqlite3;fi
 	@if [ ! -d $(B)/renderer ];then $(MKDIR) $(B)/renderer;fi
 	@if [ ! -d $(B)/renderersmp ];then $(MKDIR) $(B)/renderersmp;fi
 	@if [ ! -d $(B)/ded ];then $(MKDIR) $(B)/ded;fi
@@ -1538,6 +1557,12 @@ ifneq ($(USE_INTERNAL_JPEG),0)
     $(B)/renderer/jutils.o
 endif
 
+ifneq ($(BUILD_SQLITE3),0)
+  Q3OBJ += \
+    $(B)/client/sqlite3.o \
+    $(B)/client/sql_log.o
+endif
+
 ifeq ($(ARCH),i386)
   Q3OBJ += \
     $(B)/client/snd_mixa.o \
@@ -1813,6 +1838,14 @@ Q3DOBJ = \
   $(B)/ded/con_log.o \
   $(B)/ded/sys_main.o
 
+DED_CFLAGS += $(CFLAGS)
+
+ifneq ($(BUILD_SQLITE3),0)
+  Q3DOBJ += \
+    $(B)/ded/sqlite3.o \
+    $(B)/ded/sql_log.o
+endif
+
 ifeq ($(ARCH),i386)
   Q3DOBJ += \
       $(B)/ded/matha.o \
@@ -1919,7 +1952,7 @@ endif
 
 $(B)/$(SERVERBIN)$(FULLBINEXT): $(Q3DOBJ)
 	$(echo_cmd) "LD $@"
-	$(Q)$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $(Q3DOBJ) $(LIBS)
+	$(Q)$(CC) $(DED_CFLAGS) $(LDFLAGS) -o $@ $(Q3DOBJ) $(LIBS)
 
 
 
@@ -2207,6 +2240,18 @@ $(B)/$(MISSIONPACK)/vm/ui.qvm: $(MPUIVMOBJ) $(UIDIR)/ui_syscalls.asm $(Q3ASM)
 	$(Q)$(Q3ASM) -o $@ $(MPUIVMOBJ) $(UIDIR)/ui_syscalls.asm
 
 
+#############################################################################
+# SQLITE3 SHELL
+#############################################################################
+
+SQLOBJ = \
+  $(B)/sqlite3/shell.o \
+  $(B)/sqlite3/sqlite3.o
+
+$(B)/sqlite3$(FULLBINEXT): $(SQLOBJ)
+	$(echo_cmd) "SQL_LD $@"
+	$(Q)$(CC) $(CFLAGS) $(SQL_CFLAGS) \
+		-o $@ $(SQLOBJ)
 
 #############################################################################
 ## CLIENT/SERVER RULES
@@ -2249,6 +2294,9 @@ $(B)/client/%.o: $(SYSDIR)/%.c
 $(B)/client/%.o: $(SYSDIR)/%.m
 	$(DO_CC)
 
+$(B)/client/%.o: $(SQLDIR)/%.c
+	$(DO_SQL_CC)
+
 $(B)/client/%.o: $(SYSDIR)/%.rc
 	$(DO_WINDRES)
 
@@ -2287,6 +2335,9 @@ $(B)/ded/%.o: $(BLIBDIR)/%.c
 
 $(B)/ded/%.o: $(SYSDIR)/%.c
 	$(DO_DED_CC)
+
+$(B)/ded/%.o: $(SQLDIR)/%.c
+	$(DO_SQL_CC)
 
 $(B)/ded/%.o: $(SYSDIR)/%.m
 	$(DO_DED_CC)
@@ -2384,6 +2435,8 @@ $(B)/$(MISSIONPACK)/qcommon/%.o: $(CMDIR)/%.c
 $(B)/$(MISSIONPACK)/qcommon/%.asm: $(CMDIR)/%.c $(Q3LCC)
 	$(DO_Q3LCC_MISSIONPACK)
 
+$(B)/sqlite3/%.o: $(SQLDIR)/%.c
+	$(DO_SQL_CC)
 
 #############################################################################
 # MISC

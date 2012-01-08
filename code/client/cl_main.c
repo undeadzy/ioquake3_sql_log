@@ -3428,6 +3428,14 @@ CL_Init
 void CL_Init( void ) {
 	Com_Printf( "----- Client Initialization -----\n" );
 
+#ifdef USE_SQLITE3
+	// Start the logger before CGame so we capture all messages
+	if (sql_init(&sql, "client_qvm_log.db") < 0) {
+		Com_Error(ERR_DROP, "Failed to initialize the database");
+	}
+#endif
+
+	// initialize the CGame
 	Con_Init ();
 
 	if(!com_fullyInitialized)
@@ -3591,7 +3599,6 @@ void CL_Init( void ) {
 	}
 #endif
 
-
 	// cgame might not be initialized before menu is used
 	Cvar_Get ("cg_viewsize", "100", CVAR_ARCHIVE );
 	// Make sure cg_stereoSeparation is zero as that variable is deprecated and should not be used anymore.
@@ -3704,6 +3711,13 @@ void CL_Shutdown(char *finalmsg, qboolean disconnect, qboolean quit)
 
 	Com_Memset( &cls, 0, sizeof( cls ) );
 	Key_SetCatcher( 0 );
+
+#ifdef USE_SQLITE3
+	if (sql_close(&sql) < 0) {
+		Com_Error(ERR_DROP, "Failed to close the database\n");
+	}
+	Com_Printf("SQLite3 database shut down.\n");
+#endif
 
 	Com_Printf( "-----------------------\n" );
 

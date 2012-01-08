@@ -712,56 +712,101 @@ The ui module is making a system call
 intptr_t CL_UISystemCalls( intptr_t *args ) {
 	switch( args[0] ) {
 	case UI_ERROR:
+#ifdef USE_SQLITE3
+		sql_insert_text(sql, "ui_QVM", "client", "UI_ERROR", (const char*)VMA(1));
+#endif
 		Com_Error( ERR_DROP, "%s", (const char*)VMA(1) );
 		return 0;
 
 	case UI_PRINT:
+#ifdef USE_SQLITE3
+		sql_insert_text(sql, "ui_QVM", "client", "UI_PRINT", (const char*)VMA(1));
+#endif
 		Com_Printf( "%s", (const char*)VMA(1) );
 		return 0;
 
 	case UI_MILLISECONDS:
+#ifdef USE_SQLITE3
+		sql_insert_int(sql, "ui_QVM", "client", "UI_MILLISECONDS", Sys_Milliseconds());
+#endif
 		return Sys_Milliseconds();
 
 	case UI_CVAR_REGISTER:
+#ifdef USE_SQLITE3
+		sql_insert_var_text(sql, "ui_QVM", "client", "UI_CVAR_REGISTER", "%s %s %d", (const char *)VMA(2), (const char *)VMA(3), args[4]);
+#endif
 		Cvar_Register( VMA(1), VMA(2), VMA(3), args[4] ); 
 		return 0;
 
 	case UI_CVAR_UPDATE:
+//#ifdef USE_SQLITE3
+//		sql_insert_var_text(sql, "ui_QVM", "client", "UI_CVAR_UPDATE", "%d", VMA(1));
+//#endif
 		Cvar_Update( VMA(1) );
 		return 0;
 
 	case UI_CVAR_SET:
+#ifdef USE_SQLITE3
+		sql_insert_var_text(sql, "ui_QVM", "client", "UI_CVAR_SET", "%s %s", (const char *)VMA(1), (const char *)VMA(2));
+#endif
 		Cvar_SetSafe( VMA(1), VMA(2) );
 		return 0;
 
 	case UI_CVAR_VARIABLEVALUE:
-		return FloatAsInt( Cvar_VariableValue( VMA(1) ) );
+	{
+		int res = FloatAsInt( Cvar_VariableValue( VMA(1) ) );
+#ifdef USE_SQLITE3
+		sql_insert_int(sql, "ui_QVM", "client", "UI_CVAR_VARIABLEVALUE", res);
+#endif
+		return res;
+	}
 
 	case UI_CVAR_VARIABLESTRINGBUFFER:
 		Cvar_VariableStringBuffer( VMA(1), VMA(2), args[3] );
+#ifdef USE_SQLITE3
+		sql_insert_var_text(sql, "ui_QVM", "client", "UI_CVAR_VARIABLESTRINGBUFFER", "%s %s", (const char *)VMA(1), (const char *)VMA(2));
+#endif
 		return 0;
 
 	case UI_CVAR_SETVALUE:
+#ifdef USE_SQLITE3
+		sql_insert_var_text(sql, "ui_QVM", "client", "UI_CVAR_SETVALUE", "%s %f", (const char *)VMA(1), (*(float *)VMA(2)));
+#endif
 		Cvar_SetValueSafe( VMA(1), VMF(2) );
 		return 0;
 
 	case UI_CVAR_RESET:
+#ifdef USE_SQLITE3
+		sql_insert_text(sql, "ui_QVM", "client", "UI_CVAR_RESET", (const char *)VMA(1));
+#endif
 		Cvar_Reset( VMA(1) );
 		return 0;
 
 	case UI_CVAR_CREATE:
+#ifdef USE_SQLITE3
+		sql_insert_var_text(sql, "ui_QVM", "client", "UI_CVAR_CREATE", "%s %s %d", (const char *)VMA(1), (const char *)VMA(2), args[3]);
+#endif
 		Cvar_Get( VMA(1), VMA(2), args[3] );
 		return 0;
 
 	case UI_CVAR_INFOSTRINGBUFFER:
 		Cvar_InfoStringBuffer( args[1], VMA(2), args[3] );
+#ifdef USE_SQLITE3
+		sql_insert_var_text(sql, "ui_QVM", "client", "UI_CVAR_INFOSTRINGBUFFER", "%d %s", args[1], (const char *)VMA(2));
+#endif
 		return 0;
 
 	case UI_ARGC:
+#ifdef USE_SQLITE3
+		sql_insert_int(sql, "ui_QVM", "client", "UI_ARGC", Cmd_Argc());
+#endif
 		return Cmd_Argc();
 
 	case UI_ARGV:
 		Cmd_ArgvBuffer( args[1], VMA(2), args[3] );
+#ifdef USE_SQLITE3
+		sql_insert_var_text(sql, "ui_QVM", "client", "UI_ARGV", "%d %s", args[1], (const char *)VMA(2));
+#endif
 		return 0;
 
 	case UI_CMD_EXECUTETEXT:
@@ -773,293 +818,580 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 			Com_Printf (S_COLOR_YELLOW "turning EXEC_NOW '%.11s' into EXEC_INSERT\n", (const char*)VMA(2));
 			args[1] = EXEC_INSERT;
 		}
+#ifdef USE_SQLITE3
+		{
+			const char *when;
+			switch (args[1]) {
+			case EXEC_NOW:
+				when = "NOW"; break;
+			case EXEC_INSERT:
+				when = "INSERT"; break;
+			case EXEC_APPEND:
+				when = "APPEND"; break;
+			default:
+				when = "BAD_EXEC"; break;
+			}
+			sql_insert_var_text(sql, "ui_QVM", "client", "UI_CMD_EXECUTETEXT", "%s %s", when, (const char *)VMA(2));
+		}
+#endif
 		Cbuf_ExecuteText( args[1], VMA(2) );
 		return 0;
 
 	case UI_FS_FOPENFILE:
+//#ifdef USE_SQLITE3
+//		sql_insert_text(sql, "ui_QVM", "client", "UI_FS_FOPENFILE", (const char *)VMA(1));
+//#endif
 		return FS_FOpenFileByMode( VMA(1), VMA(2), args[3] );
 
 	case UI_FS_READ:
+//#ifdef USE_SQLITE3
+//		sql_insert_int(sql, "ui_QVM", "client", "UI_FS_READ", args[2]);
+//#endif
 		FS_Read2( VMA(1), args[2], args[3] );
 		return 0;
 
 	case UI_FS_WRITE:
+//#ifdef USE_SQLITE3
+//		sql_insert_int(sql, "ui_QVM", "client", "UI_FS_WRITE", args[2]);
+//#endif
 		FS_Write( VMA(1), args[2], args[3] );
 		return 0;
 
 	case UI_FS_FCLOSEFILE:
+//#ifdef USE_SQLITE3
+//		sql_insert_int(sql, "ui_QVM", "client", "UI_FS_FCLOSEFILE", args[1]);
+//#endif
 		FS_FCloseFile( args[1] );
 		return 0;
 
 	case UI_FS_GETFILELIST:
+//#ifdef USE_SQLITE3
+//		sql_insert_var_text(sql, "ui_QVM", "client", "UI_FS_GETFILELIST", "%s %s", VMA(1), VMA(2));
+//#endif
 		return FS_GetFileList( VMA(1), VMA(2), VMA(3), args[4] );
 
 	case UI_FS_SEEK:
+//#ifdef USE_SQLITE3
+//		sql_insert_var_text(sql, "ui_QVM", "client", "UI_FS_SEEK", "%d %d %d", args[1], args[2], args[3]);
+//#endif
 		return FS_Seek( args[1], args[2], args[3] );
 	
 	case UI_R_REGISTERMODEL:
+//#ifdef USE_SQLITE3
+//		sql_insert_text(sql, "ui_QVM", "client", "UI_R_REGISTERMODEL", (const char *)VMA(1));
+//#endif
 		return re.RegisterModel( VMA(1) );
 
 	case UI_R_REGISTERSKIN:
+//#ifdef USE_SQLITE3
+//		sql_insert_text(sql, "ui_QVM", "client", "UI_R_REGISTERSKIN", (const char *)VMA(1));
+//#endif
 		return re.RegisterSkin( VMA(1) );
 
 	case UI_R_REGISTERSHADERNOMIP:
+//#ifdef USE_SQLITE3
+//		sql_insert_text(sql, "ui_QVM", "client", "UI_R_REGISTERSHADERNOMIP", (const char *)VMA(1));
+//#endif
 		return re.RegisterShaderNoMip( VMA(1) );
 
 	case UI_R_CLEARSCENE:
+//#ifdef USE_SQLITE3
+//		sql_insert_null(sql, "ui_QVM", "client", "UI_R_CLEARSCENE");
+//#endif
 		re.ClearScene();
 		return 0;
 
 	case UI_R_ADDREFENTITYTOSCENE:
+//#ifdef USE_SQLITE3
+//		sql_insert_text(sql, "ui_QVM", "client", "UI_R_ADDREFENTITYTOSCENE", (const char *)VMA(1));
+//#endif
 		re.AddRefEntityToScene( VMA(1) );
 		return 0;
 
 	case UI_R_ADDPOLYTOSCENE:
+//#ifdef USE_SQLITE3
+//		sql_insert_int(sql, "ui_QVM", "client", "UI_R_ADDPOLYTOSCENE", args[1]);
+//#endif
 		re.AddPolyToScene( args[1], args[2], VMA(3), 1 );
 		return 0;
 
 	case UI_R_ADDLIGHTTOSCENE:
+//#ifdef USE_SQLITE3
+//		sql_insert_int(sql, "ui_QVM", "client", "UI_R_ADDPOLYSTOSCENE", args[1]);
+//#endif
 		re.AddLightToScene( VMA(1), VMF(2), VMF(3), VMF(4), VMF(5) );
 		return 0;
 
 	case UI_R_RENDERSCENE:
+//#ifdef USE_SQLITE3
+//		sql_insert_text(sql, "ui_QVM", "client", "UI_R_RENDERSCENE", (const char *)VMA(1));
+//#endif
 		re.RenderScene( VMA(1) );
 		return 0;
 
 	case UI_R_SETCOLOR:
+//#ifdef USE_SQLITE3
+//		sql_insert_null(sql, "ui_QVM", "client", "UI_R_SETCOLOR");
+//#endif
 		re.SetColor( VMA(1) );
 		return 0;
 
 	case UI_R_DRAWSTRETCHPIC:
+//#ifdef USE_SQLITE3
+//		sql_insert_null(sql, "ui_QVM", "client", "UI_R_DRAWSTRETCHPIC");
+//#endif
 		re.DrawStretchPic( VMF(1), VMF(2), VMF(3), VMF(4), VMF(5), VMF(6), VMF(7), VMF(8), args[9] );
 		return 0;
 
-  case UI_R_MODELBOUNDS:
+	case UI_R_MODELBOUNDS:
+//#ifdef USE_SQLITE3
+//		sql_insert_null(sql, "ui_QVM", "client", "UI_R_MODELBOUNDS");
+//#endif
 		re.ModelBounds( args[1], VMA(2), VMA(3) );
 		return 0;
 
 	case UI_UPDATESCREEN:
+#ifdef USE_SQLITE3
+		sql_insert_null(sql, "ui_QVM", "client", "UI_UPDATESCREEN");
+#endif
 		SCR_UpdateScreen();
 		return 0;
 
 	case UI_CM_LERPTAG:
+//#ifdef USE_SQLITE3
+//		sql_insert_null(sql, "ui_QVM", "client", "UI_CM_LERPTAG");
+//#endif
 		re.LerpTag( VMA(1), args[2], args[3], args[4], VMF(5), VMA(6) );
 		return 0;
 
 	case UI_S_REGISTERSOUND:
+#ifdef USE_SQLITE3
+		sql_insert_var_text(sql, "ui_QVM", "client", "UI_S_REGISTERSOUND", "%s %d", (const char *)VMA(1), args[2]);
+#endif
 		return S_RegisterSound( VMA(1), args[2] );
 
 	case UI_S_STARTLOCALSOUND:
+//#ifdef USE_SQLITE3
+//		sql_insert_int(sql, "ui_QVM", "client", "UI_S_STARTLOCALSOUND", args[1]);
+//#endif
 		S_StartLocalSound( args[1], args[2] );
 		return 0;
 
 	case UI_KEY_KEYNUMTOSTRINGBUF:
 		Key_KeynumToStringBuf( args[1], VMA(2), args[3] );
+#ifdef USE_SQLITE3
+		sql_insert_var_text(sql, "ui_QVM", "client", "UI_KEY_KEYNUMTOSTRINGBUF", "%d %s", args[1], (const char *)VMA(2));
+#endif
 		return 0;
 
 	case UI_KEY_GETBINDINGBUF:
 		Key_GetBindingBuf( args[1], VMA(2), args[3] );
+//#ifdef USE_SQLITE3
+//		sql_insert_var_text(sql, "ui_QVM", "client", "UI_KEY_GETBINDINGBUF", "%d %s", args[1], (const char *)VMA(2));
+//#endif
 		return 0;
 
 	case UI_KEY_SETBINDING:
 		Key_SetBinding( args[1], VMA(2) );
+#ifdef USE_SQLITE3
+		sql_insert_var_text(sql, "ui_QVM", "client", "UI_KEY_SETBINDING", "%d %s", args[1], (const char *)VMA(2));
+#endif
 		return 0;
 
 	case UI_KEY_ISDOWN:
-		return Key_IsDown( args[1] );
+	{
+		qboolean res = Key_IsDown( args[1] );
+//#ifdef USE_SQLITE3
+//		sql_insert_var_text(sql, "ui_QVM", "client", "UI_KEY_ISDOWN", "%d %d", args[1], res);
+//#endif
+		return res;
+	}
 
 	case UI_KEY_GETOVERSTRIKEMODE:
+#ifdef USE_SQLITE3
+		sql_insert_int(sql, "ui_QVM", "client", "UI_KEY_GETOVERSTRIKEMODE", Key_GetOverstrikeMode());
+#endif
 		return Key_GetOverstrikeMode();
 
 	case UI_KEY_SETOVERSTRIKEMODE:
+#ifdef USE_SQLITE3
+		sql_insert_int(sql, "ui_QVM", "client", "UI_KEY_SETOVERSTRIKEMODE", args[1]);
+#endif
 		Key_SetOverstrikeMode( args[1] );
 		return 0;
 
 	case UI_KEY_CLEARSTATES:
+#ifdef USE_SQLITE3
+		sql_insert_null(sql, "ui_QVM", "client", "UI_KEY_CLEARSTATES");
+#endif
 		Key_ClearStates();
 		return 0;
 
 	case UI_KEY_GETCATCHER:
+//#ifdef USE_SQLITE3
+//		sql_insert_int(sql, "ui_QVM", "client", "UI_KEY_GETCATCHER", Key_GetCatcher());
+//#endif
 		return Key_GetCatcher();
 
 	case UI_KEY_SETCATCHER:
+//#ifdef USE_SQLITE3
+//		sql_insert_int(sql, "ui_QVM", "client", "UI_KEY_SETCATCHER", args[1] | ( Key_GetCatcher( ) & KEYCATCH_CONSOLE ));
+//#endif
 		// Don't allow the ui module to close the console
 		Key_SetCatcher( args[1] | ( Key_GetCatcher( ) & KEYCATCH_CONSOLE ) );
 		return 0;
 
 	case UI_GETCLIPBOARDDATA:
 		CL_GetClipboardData( VMA(1), args[2] );
+#ifdef USE_SQLITE3
+		sql_insert_text(sql, "ui_QVM", "client", "UI_GETCLIPBOARDDATA", (const char *)VMA(1));
+#endif
 		return 0;
 
 	case UI_GETCLIENTSTATE:
 		GetClientState( VMA(1) );
+#ifdef USE_SQLITE3
+		sql_insert_blob(sql, "ui_QVM", "client", "UI_GETCLIENTSTATE", (uiClientState_t *)VMA(1), sizeof(uiClientState_t));
+#endif
 		return 0;		
 
 	case UI_GETGLCONFIG:
+//#ifdef USE_SQLITE3
+//		sql_insert_null(sql, "ui_QVM", "client", "UI_GETGLCONFIG");
+//#endif
 		CL_GetGlconfig( VMA(1) );
 		return 0;
 
 	case UI_GETCONFIGSTRING:
-		return GetConfigString( args[1], VMA(2), args[3] );
-
+	{
+		int res = GetConfigString( args[1], VMA(2), args[3] );
+#ifdef USE_SQLITE3
+		sql_insert_var_text(sql, "ui_QVM", "client", "UI_GETCONFIGSTRING", "%d %s", args[1], (const char *)VMA(2));
+#endif
+		return res;
+	}
 	case UI_LAN_LOADCACHEDSERVERS:
+#ifdef USE_SQLITE3
+		sql_insert_null(sql, "ui_QVM", "client", "UI_LAN_LOADCACHEDSERVERS");
+#endif
 		LAN_LoadCachedServers();
 		return 0;
 
 	case UI_LAN_SAVECACHEDSERVERS:
+#ifdef USE_SQLITE3
+		sql_insert_null(sql, "ui_QVM", "client", "UI_LAN_SAVECACHEDSERVERS");
+#endif
 		LAN_SaveServersToCache();
 		return 0;
 
 	case UI_LAN_ADDSERVER:
+#ifdef USE_SQLITE3
+		sql_insert_var_text(sql, "ui_QVM", "client", "UI_LAN_ADDSERVER", "%d %s %s", args[1], (const char *)VMA(2), (const char *)VMA(3));
+#endif
 		return LAN_AddServer(args[1], VMA(2), VMA(3));
 
 	case UI_LAN_REMOVESERVER:
+#ifdef USE_SQLITE3
+		sql_insert_var_text(sql, "ui_QVM", "client", "UI_LAN_REMOVESERVER", "%d %s", args[1], (const char *)VMA(2));
+#endif
 		LAN_RemoveServer(args[1], VMA(2));
 		return 0;
 
 	case UI_LAN_GETPINGQUEUECOUNT:
+#ifdef USE_SQLITE3
+		sql_insert_int(sql, "ui_QVM", "client", "UI_LAN_GETPINGQUEUECOUNT", LAN_GetPingQueueCount());
+#endif
 		return LAN_GetPingQueueCount();
 
 	case UI_LAN_CLEARPING:
+#ifdef USE_SQLITE3
+		sql_insert_int(sql, "ui_QVM", "client", "UI_LAN_CLEARPING", args[1]);
+#endif
 		LAN_ClearPing( args[1] );
 		return 0;
 
 	case UI_LAN_GETPING:
 		LAN_GetPing( args[1], VMA(2), args[3], VMA(4) );
+#ifdef USE_SQLITE3
+		sql_insert_var_text(sql, "ui_QVM", "client", "UI_LAN_GETPING", "%d %s", (*(int *)VMA(4)), (const char *)VMA(2));
+#endif
 		return 0;
 
 	case UI_LAN_GETPINGINFO:
 		LAN_GetPingInfo( args[1], VMA(2), args[3] );
+#ifdef USE_SQLITE3
+		sql_insert_text(sql, "ui_QVM", "client", "UI_LAN_GETPINGINFO", (const char *)VMA(2));
+#endif
 		return 0;
 
 	case UI_LAN_GETSERVERCOUNT:
-		return LAN_GetServerCount(args[1]);
+	{
+		int res = LAN_GetServerCount(args[1]);
+#ifdef USE_SQLITE3
+		sql_insert_var_text(sql, "ui_QVM", "client", "UI_LAN_GETSERVERCOUNT", "%d %d", args[1], res);
+#endif
+		return res;
+	}
 
 	case UI_LAN_GETSERVERADDRESSSTRING:
 		LAN_GetServerAddressString( args[1], args[2], VMA(3), args[4] );
+#ifdef USE_SQLITE3
+		sql_insert_var_text(sql, "ui_QVM", "client", "UI_LAN_GETSERVERADDRESSSTRING", "%d %s", args[1], (const char *)VMA(3));
+#endif
 		return 0;
 
 	case UI_LAN_GETSERVERINFO:
 		LAN_GetServerInfo( args[1], args[2], VMA(3), args[4] );
+#ifdef USE_SQLITE3
+		sql_insert_var_text(sql, "ui_QVM", "client", "UI_LAN_GETSERVERINFO", "%d %s", args[1], (const char *)VMA(3));
+#endif
 		return 0;
 
 	case UI_LAN_GETSERVERPING:
-		return LAN_GetServerPing( args[1], args[2] );
+	{
+		int res = LAN_GetServerPing( args[1], args[2] );
+#ifdef USE_SQLITE3
+		sql_insert_var_text(sql, "ui_QVM", "client", "UI_LAN_GETSERVERPING", "%d %d %d", args[1], args[2], res);
+#endif
+		return res;
+	}
 
 	case UI_LAN_MARKSERVERVISIBLE:
+#ifdef USE_SQLITE3
+		sql_insert_var_text(sql, "ui_QVM", "client", "UI_LAN_MARKSERVERVISIBLE", "%d %d %d", args[1], args[2], args[3]);
+#endif
 		LAN_MarkServerVisible( args[1], args[2], args[3] );
 		return 0;
 
 	case UI_LAN_SERVERISVISIBLE:
+#ifdef USE_SQLITE3
+		sql_insert_var_text(sql, "ui_QVM", "client", "UI_LAN_SERVERISVISIBLE", "%d %d", args[1], args[2]);
+#endif
 		return LAN_ServerIsVisible( args[1], args[2] );
 
 	case UI_LAN_UPDATEVISIBLEPINGS:
+#ifdef USE_SQLITE3
+		sql_insert_int(sql, "ui_QVM", "client", "UI_LAN_UPDATEVISIBLEPINGS", args[1]);
+#endif
 		return LAN_UpdateVisiblePings( args[1] );
 
 	case UI_LAN_RESETPINGS:
+#ifdef USE_SQLITE3
+		sql_insert_int(sql, "ui_QVM", "client", "UI_LAN_RESETPINGS", args[1]);
+#endif
 		LAN_ResetPings( args[1] );
 		return 0;
 
 	case UI_LAN_SERVERSTATUS:
-		return LAN_GetServerStatus( VMA(1), VMA(2), args[3] );
+	{
+		int res = LAN_GetServerStatus( VMA(1), VMA(2), args[3] );
+#ifdef USE_SQLITE3
+		sql_insert_var_text(sql, "ui_QVM", "client", "UI_LAN_SERVERSTATUS", (const char *)VMA(1), (const char *)VMA(2));
+#endif
+		return res;
+	}
 
 	case UI_LAN_COMPARESERVERS:
+#ifdef USE_SQLITE3
+		sql_insert_var_text(sql, "ui_QVM", "client", "UI_LAN_COMPARESERVERS", "%d %d %d %d %d", args[1], args[2], args[3], args[4], args[5]);
+#endif
 		return LAN_CompareServers( args[1], args[2], args[3], args[4], args[5] );
 
 	case UI_MEMORY_REMAINING:
+#ifdef USE_SQLITE3
+		sql_insert_int(sql, "ui_QVM", "client", "UI_MEMORY_REMAINING", Hunk_MemoryRemaining());
+#endif
 		return Hunk_MemoryRemaining();
 
 	case UI_GET_CDKEY:
 		CLUI_GetCDKey( VMA(1), args[2] );
+#ifdef USE_SQLITE3
+		// Don't put the key in here in case someone sends this file out
+		sql_insert_text(sql, "ui_QVM", "client", "UI_GET_CDKEY", "key is in VMA(1) but not putting it in here");
+#endif
 		return 0;
 
 	case UI_SET_CDKEY:
 #ifndef STANDALONE
+#  ifdef USE_SQLITE3
+		// Don't put the key in here in case someone sends this file out
+		sql_insert_text(sql, "ui_QVM", "client", "UI_SET_CDKEY", "key is in VMA(1) but not putting it in here");
+#  endif
 		CLUI_SetCDKey( VMA(1) );
 #endif
 		return 0;
 	
 	case UI_SET_PBCLSTATUS:
+#ifdef USE_SQLITE3
+		sql_insert_null(sql, "ui_QVM", "client", "UI_SET_PBCLSTATUS");
+#endif
 		return 0;	
 
 	case UI_R_REGISTERFONT:
+#ifdef USE_SQLITE3
+		sql_insert_var_text(sql, "ui_QVM", "client", "UI_R_REGISTERFONT", "%s %d", (const char *)VMA(1), args[2]);
+#endif
 		re.RegisterFont( VMA(1), args[2], VMA(3));
 		return 0;
 
 	case UI_MEMSET:
+//#ifdef USE_SQLITE3
+//		sql_insert_int(sql, "ui_QVM", "client", "UI_MEMSET", args[3]);
+//#endif
 		Com_Memset( VMA(1), args[2], args[3] );
 		return 0;
 
 	case UI_MEMCPY:
+//#ifdef USE_SQLITE3
+//		sql_insert_int(sql, "ui_QVM", "client", "UI_MEMCPY", args[3]);
+//#endif
 		Com_Memcpy( VMA(1), VMA(2), args[3] );
 		return 0;
 
 	case UI_STRNCPY:
+	{
+#ifdef USE_SQLITE3
+		char *buf;
+		if ((buf = malloc(args[3] + 1)) == NULL) {
+			Com_Error(ERR_DROP, "Failed to malloc");
+		}
+		Q_strncpyz(buf, (const char *)VMA(2), args[3] + 1);
+		sql_insert_var_text(sql, "cgame_QVM", "client", "CG_STRNCPY", "%d %s", args[1], buf);
+		free(buf);
+#endif
 		strncpy( VMA(1), VMA(2), args[3] );
 		return args[1];
+	}
 
 	case UI_SIN:
+//#ifdef USE_SQLITE3
+//		sql_insert_double(sql, "ui_QVM", "client", "UI_SIN", VMF(1));
+//#endif
 		return FloatAsInt( sin( VMF(1) ) );
 
 	case UI_COS:
+//#ifdef USE_SQLITE3
+//		sql_insert_double(sql, "ui_QVM", "client", "UI_COS", VMF(1));
+//#endif
 		return FloatAsInt( cos( VMF(1) ) );
 
 	case UI_ATAN2:
+//#ifdef USE_SQLITE3
+//		sql_insert_var_text(sql, "ui_QVM", "client", "UI_ATAN2", "%f %f", VMF(1), VMF(2));
+//#endif
 		return FloatAsInt( atan2( VMF(1), VMF(2) ) );
 
 	case UI_SQRT:
+//#ifdef USE_SQLITE3
+//		sql_insert_double(sql, "ui_QVM", "client", "UI_SQRT", VMF(1));
+//#endif
 		return FloatAsInt( sqrt( VMF(1) ) );
 
 	case UI_FLOOR:
+//#ifdef USE_SQLITE3
+//		sql_insert_double(sql, "ui_QVM", "client", "UI_FLOOR", VMF(1));
+//#endif
 		return FloatAsInt( floor( VMF(1) ) );
 
 	case UI_CEIL:
+//#ifdef USE_SQLITE3
+//		sql_insert_double(sql, "ui_QVM", "client", "UI_CEIL", VMF(1));
+//#endif
 		return FloatAsInt( ceil( VMF(1) ) );
 
 	case UI_PC_ADD_GLOBAL_DEFINE:
+//#ifdef USE_SQLITE3
+//		sql_insert_text(sql, "ui_QVM", "client", "UI_PC_ADD_GLOBAL_DEFINE", (const char *)VMA(1));
+//#endif
 		return botlib_export->PC_AddGlobalDefine( VMA(1) );
 	case UI_PC_LOAD_SOURCE:
+//#ifdef USE_SQLITE3
+//		sql_insert_text(sql, "ui_QVM", "client", "UI_PC_LOAD_SOURCE", (const char *)VMA(1));
+//#endif
 		return botlib_export->PC_LoadSourceHandle( VMA(1) );
 	case UI_PC_FREE_SOURCE:
+//#ifdef USE_SQLITE3
+//		sql_insert_int(sql, "ui_QVM", "client", "UI_PC_FREE_SOURCE", args[1]);
+//#endif
 		return botlib_export->PC_FreeSourceHandle( args[1] );
 	case UI_PC_READ_TOKEN:
+//#ifdef USE_SQLITE3
+//		sql_insert_int(sql, "ui_QVM", "client", "UI_PC_READ_TOKEN", args[1]);
+//#endif
 		return botlib_export->PC_ReadTokenHandle( args[1], VMA(2) );
 	case UI_PC_SOURCE_FILE_AND_LINE:
+//#ifdef USE_SQLITE3
+//		sql_insert_var_text(sql, "ui_QVM", "client", "UI_PC_SOURCE_FILE_AND_LINE", "%d %s %s", args[1], (const char *)VMA(2), (const char *)VMA(3));
+//#endif
 		return botlib_export->PC_SourceFileAndLine( args[1], VMA(2), VMA(3) );
 
 	case UI_S_STOPBACKGROUNDTRACK:
+//#ifdef USE_SQLITE3
+//		sql_insert_null(sql, "ui_QVM", "client", "UI_S_STOPBACKGROUNDTRACK");
+//#endif
 		S_StopBackgroundTrack();
 		return 0;
 	case UI_S_STARTBACKGROUNDTRACK:
+#ifdef USE_SQLITE3
+		sql_insert_var_text(sql, "ui_QVM", "client", "UI_S_STARTBACKGROUNDTRACK", "%s %s", (const char *)VMA(1), (const char *)VMA(2));
+#endif
 		S_StartBackgroundTrack( VMA(1), VMA(2));
 		return 0;
 
 	case UI_REAL_TIME:
-		return Com_RealTime( VMA(1) );
+	{
+		int res = Com_RealTime( VMA(1) );
+#ifdef USE_SQLITE3
+		sql_insert_int(sql, "ui_QVM", "client", "UI_REAL_TIME", res);
+#endif
+		return res;
+	}
 
 	case UI_CIN_PLAYCINEMATIC:
+//#ifdef USE_SQLITE3
+//		sql_insert_text(sql, "ui_QVM", "client", "UI_CIN_PLAYCINEMATIC", (const char *)VMA(1));
+//#endif
 	  Com_DPrintf("UI_CIN_PlayCinematic\n");
 	  return CIN_PlayCinematic(VMA(1), args[2], args[3], args[4], args[5], args[6]);
 
 	case UI_CIN_STOPCINEMATIC:
+//#ifdef USE_SQLITE3
+//		sql_insert_int(sql, "ui_QVM", "client", "UI_CIN_STOPCINEMATIC", args[1]);
+//#endif
 	  return CIN_StopCinematic(args[1]);
 
 	case UI_CIN_RUNCINEMATIC:
+//#ifdef USE_SQLITE3
+//		sql_insert_int(sql, "ui_QVM", "client", "UI_CIN_RUNCINEMATIC", args[1]);
+//#endif
 	  return CIN_RunCinematic(args[1]);
 
 	case UI_CIN_DRAWCINEMATIC:
+//#ifdef USE_SQLITE3
+//		sql_insert_int(sql, "ui_QVM", "client", "UI_CIN_DRAWCINEMATIC", args[1]);
+//#endif
 	  CIN_DrawCinematic(args[1]);
 	  return 0;
 
 	case UI_CIN_SETEXTENTS:
+//#ifdef USE_SQLITE3
+//		sql_insert_int(sql, "ui_QVM", "client", "UI_CIN_SETEXTENTS", args[1]);
+//#endif
 	  CIN_SetExtents(args[1], args[2], args[3], args[4], args[5]);
 	  return 0;
 
 	case UI_R_REMAP_SHADER:
+//#ifdef USE_SQLITE3
+//		sql_insert_var_text(sql, "ui_QVM", "client", "UI_R_REMAP_SHADER", "%s %s %s", (const char *)VMA(1), (const char *)VMA(2), (const char *)VMA(3));
+//#endif
 		re.RemapShader( VMA(1), VMA(2), VMA(3) );
 		return 0;
 
 	case UI_VERIFY_CDKEY:
+#ifdef USE_SQLITE3
+		// Don't put this in here in case someone sends this log file out.
+		sql_insert_text(sql, "ui_QVM", "client", "UI_VERIFY_CDKEY", "Not going to compare key VMA(1) with VMA(2) checksum");
+#endif
 		return CL_CDKeyValidate(VMA(1), VMA(2));
 		
 	default:
@@ -1081,6 +1413,9 @@ void CL_ShutdownUI( void ) {
 	if ( !uivm ) {
 		return;
 	}
+#ifdef USE_SQLITE3
+	sql_insert_null(sql, "client", "ui_QVM", "UI_SHUTDOWN");
+#endif
 	VM_Call( uivm, UI_SHUTDOWN );
 	VM_Free( uivm );
 	uivm = NULL;
@@ -1106,6 +1441,9 @@ void CL_InitUI( void ) {
 			interpret = VMI_COMPILED;
 	}
 
+#ifdef USE_SQLITE3
+	sql_insert_null(sql, "client", "ui_QVM", "VM_Create");
+#endif
 	uivm = VM_Create( "ui", CL_UISystemCalls, interpret );
 	if ( !uivm ) {
 		Com_Error( ERR_FATAL, "VM_Create on UI failed" );
@@ -1113,9 +1451,15 @@ void CL_InitUI( void ) {
 
 	// sanity check
 	v = VM_Call( uivm, UI_GETAPIVERSION );
+#ifdef USE_SQLITE3
+	sql_insert_int(sql, "client", "ui_QVM", "UI_GETAPIVERSION", v);
+#endif
 	if (v == UI_OLD_API_VERSION) {
 //		Com_Printf(S_COLOR_YELLOW "WARNING: loading old Quake III Arena User Interface version %d\n", v );
 		// init for this gamestate
+#ifdef USE_SQLITE3
+	  sql_insert_int(sql, "client", "ui_QVM", "UI_INIT", (clc.state >= CA_AUTHORIZING && clc.state < CA_ACTIVE));
+#endif
 		VM_Call( uivm, UI_INIT, (clc.state >= CA_AUTHORIZING && clc.state < CA_ACTIVE));
 	}
 	else if (v != UI_API_VERSION) {
@@ -1128,6 +1472,9 @@ void CL_InitUI( void ) {
 	}
 	else {
 		// init for this gamestate
+#ifdef USE_SQLITE3
+	  sql_insert_int(sql, "client", "ui_QVM", "UI_INIT", (clc.state >= CA_AUTHORIZING && clc.state < CA_ACTIVE));
+#endif
 		VM_Call( uivm, UI_INIT, (clc.state >= CA_AUTHORIZING && clc.state < CA_ACTIVE) );
 	}
 }
@@ -1135,6 +1482,9 @@ void CL_InitUI( void ) {
 #ifndef STANDALONE
 qboolean UI_usesUniqueCDKey( void ) {
 	if (uivm) {
+#ifdef USE_SQLITE3
+		sql_insert_null(sql, "client", "ui_QVM", "UI_HASUNIQUECDKEY");
+#endif
 		return (VM_Call( uivm, UI_HASUNIQUECDKEY) == qtrue);
 	} else {
 		return qfalse;
@@ -1154,5 +1504,8 @@ qboolean UI_GameCommand( void ) {
 		return qfalse;
 	}
 
+#ifdef USE_SQLITE3
+	sql_insert_int(sql, "client", "ui_QVM", "UI_CONSOLE_COMMAND", cls.realtime);
+#endif
 	return VM_Call( uivm, UI_CONSOLE_COMMAND, cls.realtime );
 }
