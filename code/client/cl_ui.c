@@ -1256,7 +1256,7 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 			Com_Error(ERR_DROP, "Failed to malloc");
 		}
 		Q_strncpyz(buf, (const char *)VMA(2), args[3] + 1);
-		sql_insert_var_text(sql, "cgame_QVM", "client", "CG_STRNCPY", "%d %s", args[1], buf);
+		sql_insert_var_text(sql, "ui_QVM", "client", "CG_STRNCPY", "%d %s", args[1], buf);
 		free(buf);
 #endif
 		strncpy( VMA(1), VMA(2), args[3] );
